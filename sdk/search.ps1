@@ -666,7 +666,7 @@ $location = (& {
     $location.Update()
 })
 
-While( "$($location.Origin)".Trim() ne $Origin.Trim() ) {
+While( "$($location.Origin)".Trim() -ne $Origin.Trim() ) {
     $location.Update()
     If( "$($location.Path)".Trim() -eq "" ){
         $location.Path = Get-Location

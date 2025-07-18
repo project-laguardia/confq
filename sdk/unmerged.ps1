@@ -153,7 +153,7 @@ $location = (& {
     $location.Update()
 })
 
-While( "$($location.Origin)".Trim() ne $SDKOrigin.Trim() ) {
+While( "$($location.Origin)".Trim() -ne $SDKOrigin.Trim() ) {
     $location.Update()
     If( "$($location.Path)".Trim() -eq "" ){
         $location.Path = Get-Location

@@ -84,6 +84,7 @@ If( $stash ) {
 
     git stash store $stash
     git reset --hard
+    git fetch sdk
     git checkout -b sdk-changes sdk/main
     git reset --hard
     git checkout $stash -- sdk/

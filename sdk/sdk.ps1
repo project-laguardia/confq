@@ -42,9 +42,10 @@ If( $Publish ) {
     git branch -D sdk-changes
 
     If( $sha ) {
-        git branch temp-$sha $sha
+        <# git branch temp-$sha $sha
         git diff temp-$sha -- . ':!sdk/' | git apply
-        git branch -D temp-$sha
+        git branch -D temp-$sha #>
+        git stash apply $sha
     }
     return
 }

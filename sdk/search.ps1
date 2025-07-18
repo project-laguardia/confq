@@ -345,14 +345,14 @@ New-Module -Name "Laguardia.SDK.Search" {
                     $lang = Format-Lang -Lang $lang -Path $_.FullName
 
                     $hit = (& {
-                        If( $Languages.Count -and ($Languages -contains $lang) ){ return $true }
-                        If( $Extensions -contains $_.Extension ){ return $true }
-                        If( $Filenames.Count -and $Filenames -contains $_.Name ){ return $true }
+                        If( $Languages.Count -and (($Languages -contains $lang) -or ($lang -eq $Languages)) ){ return $true }
+                        If( $Extensions.Count -and (($Extensions -contains $_.Extension) -or ($_.Extension -eq $Extensions)) ){ return $true }
+                        If( $Filenames.Count -and (($Filenames -contains $_.Name) -or ($_.Name -eq $Filenames)) ){ return $true }
 
                         $file = $_.FullName
                         $shebang = Get-Content -Path $file -TotalCount 1 -ErrorAction SilentlyContinue
-                        $Shebangs | ForEach-Object {
-                            if ($shebang -like "$_*") {
+                        foreach( $compare_shebang in $Shebangs ){
+                            If( "$shebang".Trim() -like "$compare_shebang*" ){
                                 return $true
                             }
                         }
@@ -531,14 +531,14 @@ New-Module -Name "Laguardia.SDK.Search" {
                 }
 
                 $hit = (& {
-                    If( $Languages.Count -and ($Languages -contains $lang) ){ return $true }
-                    If( $Extensions -contains $_.Extension ){ return $true }
-                    If( $Filenames.Count -and $Filenames -contains $_.Name ){ return $true }
+                    If( $Languages.Count -and (($Languages -contains $lang) -or ($lang -eq $Languages)) ){ return $true }
+                    If( $Extensions.Count -and (($Extensions -contains $_.Extension) -or ($_.Extension -eq $Extensions)) ){ return $true }
+                    If( $Filenames.Count -and (($Filenames -contains $_.Name) -or ($_.Name -eq $Filenames)) ){ return $true }
 
                     $file = $_.FullName
                     $shebang = Get-Content -Path $file -TotalCount 1 -ErrorAction SilentlyContinue
-                    $Shebangs | ForEach-Object {
-                        if ($shebang -like "$_*") {
+                    foreach( $compare_shebang in $Shebangs ){
+                        If( "$shebang".Trim() -like "$compare_shebang*" ){
                             return $true
                         }
                     }
@@ -621,7 +621,7 @@ New-Module -Name "Laguardia.SDK.Search" {
             Write-Host "Found $total_hits hits in $total_files files." -ForegroundColor Green
             
             $langs = $cache.Summary.Keys | ForEach-Object { $_ } | Where-Object {
-                If( $OmitLanguages -and ($OmitLanguages -contains $_) ){ return $false }
+                If( $OmitLanguages -and (($OmitLanguages -contains $_) -or ($_ -eq $OmitLanguages)) ){ return $false }
                 return $true
             }
 

@@ -5,6 +5,11 @@ param (
     [string] $Repository = (& {
         throw "Repository parameter is required. Please provide a valid repository path."
     }),
+    [string] $Output = (& {
+        $default = "tracking"
+        New-Item -Path -Path $default -ItemType Directory -Force | Out-Null
+        $default
+    }),
     [switch] $Verbose
 )
 
@@ -169,7 +174,7 @@ pushd $location.Path
         $params.Verbose = $true
         Write-Host "Aggregating in-progress commits..." -ForegroundColor Green
     }
-    Get-UnmergedCommits @params | ConvertTo-Json -Depth 10 | Out-File -FilePath "some/place/in-progress.json" -Encoding utf8 -Force
+    Get-UnmergedCommits @params | ConvertTo-Json -Depth 10 | Out-File -FilePath "$Output/in-progress.json" -Encoding utf8 -Force
 }
 
 # Pending
@@ -183,7 +188,7 @@ pushd $location.Path
         $params.Verbose = $true
         Write-Host "Aggregating pending commits..." -ForegroundColor Green
     }
-    Get-UnmergedCommits @params | ConvertTo-Json -Depth 10 | Out-File -FilePath "some/place/pending.json" -Encoding utf8 -Force
+    Get-UnmergedCommits @params | ConvertTo-Json -Depth 10 | Out-File -FilePath "$Output/pending.json" -Encoding utf8 -Force
 }
 
 # Full
@@ -196,7 +201,7 @@ pushd $location.Path
         $params.Verbose = $true
         Write-Host "Aggregating all unmerged commits..." -ForegroundColor Green
     }
-    Get-UnmergedCommits @params | ConvertTo-Json -Depth 10 | Out-File -FilePath "some/place/full.json" -Encoding utf8 -Force
+    Get-UnmergedCommits @params | ConvertTo-Json -Depth 10 | Out-File -FilePath "$Output/full.json" -Encoding utf8 -Force
 }
 
 popd

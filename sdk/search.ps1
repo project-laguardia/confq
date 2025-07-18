@@ -2,7 +2,7 @@ param(
     [switch] $FunctionOnly,
     [string] $Researching = (& {
         If( -not $FunctionOnly ){
-        throw "Researching parameter is required. Please provide a valid repository URL."
+            throw "Researching parameter is required. Please provide a valid repository URL."
         }
     }),
     [string] $Origin = "https://github.com/project-laguardia/sdk",
@@ -665,6 +665,68 @@ New-Module -Name "Laguardia.SDK.Search" {
         return $output
     }
 
+    function Remove-LiteralPrefix {
+        param (
+            [string]$String,
+            [string]$Prefix
+        )
+
+        if ($String.StartsWith($Prefix)) {
+            return $String.Substring($Prefix.Length)
+        } else {
+            return $String
+        }
+    }
+
+    function global:Write-SearchResults {
+        param(
+            [parameter(Mandatory = $true)]
+            [string] $Pattern,
+            [string] $Output = (& {
+                $default = "tracking"
+                New-Item -Path $default -ItemType Directory -Force | Out-Null
+                $default
+            }),
+            [string] $Researching = $DefaultResearching,
+            [string] $Repository = $DefaultRepository,
+            [string[]] $Extensions = $null,
+            [string[]] $Shebangs = $null,
+            [string[]] $Filenames = $null,
+            [string[]] $Languages = $null,
+            [string[]] $OmitLanguages = $null,
+            [switch] $Logging,
+            [switch] $Force
+        )
+
+        $params = @{
+            Pattern = $Pattern
+            Researching = $Researching
+            Repository = $Repository
+            Extensions = $Extensions
+            Shebangs = $Shebangs
+            Filenames = $Filenames
+            Languages = $Languages
+            OmitLanguages = $OmitLanguages
+        }
+
+        If( $Logging ) {
+            $params.Logging = $true
+            Write-Host "Searching for '$Pattern' in the source code..." -ForegroundColor Magenta
+        }
+        If( $Force ){
+            $params.Force = $true
+        }
+        $hits = Find-InSource @params
+        $hits | ConvertTo-Json -Depth 5 | Out-File "$Output/results.json" -Encoding UTF8
+        $hits.Keys | ForEach-Object {
+            $path = (Remove-LiteralPrefix -String $_ -Prefix $params.Repository.Trim("./\")).TrimStart('.\/')
+            $base_url = $BaseURL.TrimEnd('/')
+            $url = "$base_url/$path"
+            return "[$path]($url)"
+        } | Out-File "$Output/results.txt" -Encoding UTF8
+    }
+
+    Export-ModuleMember -Function Find-InSource, Write-SearchResults
 } -ArgumentList $Repository, $Researching, $BaseURL | Import-Module | Out-Null
 
 If( $FunctionOnly ) {
@@ -700,24 +762,13 @@ While( "$($location.Origin)".Trim() -ne $Origin.Trim() ) {
 
 pushd $location.Path
 
-function Remove-LiteralPrefix {
-    param (
-        [string]$String,
-        [string]$Prefix
-    )
-
-    if ($String.StartsWith($Prefix)) {
-        return $String.Substring($Prefix.Length)
-    } else {
-        return $String
-    }
-}
-
 & { # Example
     $params = @{
         Pattern = (& {
-            # Put a regex pattern here to search for
+            # This is a regex pattern to search for
+            throw "Pattern parameter is required. Please provide a valid search pattern."
         })
+        Output = $Output
         Researching = $Researching
         Repository = $Repository
         Extensions = $Extensions
@@ -726,20 +777,8 @@ function Remove-LiteralPrefix {
         Languages = $Languages
         OmitLanguages = $OmitLanguages
     }
-    If( $Verbose ) {
-        $params.Verbose = $true
-        Write-Host "Searching for '<something>' in the source code..." -ForegroundColor Magenta
-    }
-    If( $Force ){
-        $params.Force = $true
-    }
-    $hits = Find-InSource @params
-    $hits | ConvertTo-Json -Depth 5 | Out-File "$Output/results.json" -Encoding UTF8
-    $hits.Keys | ForEach-Object {
-        $path = (Remove-LiteralPrefix -String $_ -Prefix $params.Repository.Trim("./\")).TrimStart('.\/')
-        $base_url = $BaseURL.TrimEnd('/')
-        $url = "$base_url/$path"
-        return "[$path]($url)"
-    } | Out-File "$Output/results.txt" -Encoding UTF8
+    If( $Logging ) { $params.Logging = $true }
+    If( $Force ) { $params.Force = $true }
+    Write-SearchResults @params
 }
 popd

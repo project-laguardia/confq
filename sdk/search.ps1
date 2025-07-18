@@ -3,14 +3,16 @@ param(
         throw "Researching parameter is required. Please provide a valid repository URL."
     }),
     [string] $Origin = "https://github.com/project-laguardia/sdk",
+    [switch] $FunctionOnly,
     [string] $Repository = (& {
+        If( -not $FunctionOnly ){
         throw "Repository parameter is required. Please provide a valid repository path."
+        }
     }),
     [string] $BaseURL = (& {
         $sha = (git ls-remote $Researching "HEAD").Split("`t") | Select-Object -First 1
         return "$Researching/tree/$sha"
     }),
-    [switch] $FunctionOnly,
     [switch] $Verbose,
     [switch] $Force
 )
@@ -18,6 +20,10 @@ param(
 $ErrorActionPreference = "Stop"
 
 New-Module -Name "Laguardia.SDK.Search" {
+    param(
+        [string] $DefaultRepository
+    )
+
     # These are files you are not certain you want to omit or include from the search, but don't want to review
     # $global:DEBUGGING_LANGUAGE = "Menuconfig Makefile JSON XML Shell Perl C# Java Lex Yacc Diff INI CMake Python"
     $_DEBUGGING_LANGUAGE = If( -not ([string]::IsNullOrWhitespace( $global:DEBUGGING_LANGUAGE )) ){
@@ -158,9 +164,7 @@ New-Module -Name "Laguardia.SDK.Search" {
             [string] $Researching = (& {
                 throw "Researching parameter is required. Please provide a valid repository URL."
             }),
-            [string] $Repository = (& {
-                throw "Repository parameter is required. Please provide a valid repository path."
-            }),
+            [string] $Repository = $DefaultRepository,
             [string[]] $Extensions = @(
                 ".lua",
                 ".c",
@@ -653,7 +657,7 @@ New-Module -Name "Laguardia.SDK.Search" {
     }
 
     Export-ModuleMember -Function Find-InSource
-} | Import-Module | Out-Null
+} -ArgumentList $Repository | Import-Module | Out-Null
 
 If( $FunctionOnly ) {
     return

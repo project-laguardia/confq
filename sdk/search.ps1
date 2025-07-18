@@ -389,7 +389,7 @@ New-Module -Name "Laguardia.SDK.Search" {
             } | Select-Object -First 1) -v | Out-Null
 
             $remotes = @{}
-            git remote -v 2>$null | ForEach-Object {
+            git -C $repository remote -v 2>$null | ForEach-Object {
                 if ($_ -match '^(\S+)\s+(\S+)') {
                     $remotes[$matches[1]] = $matches[2]
                 }
@@ -399,7 +399,7 @@ New-Module -Name "Laguardia.SDK.Search" {
             }
             If( "$remote".Trim() -eq "" ){
                 $remote = "researching"
-                git remote set-url $remote $Researching 2>&1 | ForEach-Object {
+                git -C $repository remote set-url $remote $Researching 2>&1 | ForEach-Object {
                     If( $LASTEXITCODE -ne 0 ){
                         throw "$_"
                     }

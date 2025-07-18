@@ -174,6 +174,7 @@ New-Module -Name "Laguardia.SDK.Search" {
 
     function global:Find-InSource {
         param(
+            [parameter(Mandatory = $true)]
             [string] $Pattern,
             [string] $Researching = $DefaultResearching,
             [string] $Repository = $DefaultRepository,

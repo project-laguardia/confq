@@ -14,3 +14,6 @@
 # SDK binaries
 sdk/enry.exe
 sdk/enry
+
+# VCS tracking
+tracking/

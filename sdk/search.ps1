@@ -25,7 +25,7 @@ param(
     $Shebangs = $null,
     $Languages = $null,
     $OmitLanguages = $null,
-    [switch] $Verbose,
+    [switch] $Logging,
     [switch] $Force
 )
 
@@ -182,7 +182,7 @@ New-Module -Name "Laguardia.SDK.Search" {
             [string[]] $Filenames = $null,
             [string[]] $Languages = $null,
             [string[]] $OmitLanguages = $null,
-            [switch] $Verbose,
+            [switch] $Logging,
             [switch] $Force
         )
 
@@ -200,7 +200,7 @@ New-Module -Name "Laguardia.SDK.Search" {
             Try {
                 (gcm enry -ErrorAction Stop).Path | Resolve-Path -ErrorAction Stop
             } Catch {
-                If( $Verbose ) {
+                If( $Logging ) {
                     Write-Host "Enry not found! Fetching and building enry..." `
                         -BackgroundColor Yellow `
                         -ForegroundColor Black `
@@ -223,7 +223,7 @@ New-Module -Name "Laguardia.SDK.Search" {
                         If( $LASTEXITCODE -ne 0 ){
                             throw "$_"
                         }
-                        If( $Verbose ) {
+                        If( $Logging ) {
                             If( $_ -is [System.Management.Automation.ErrorRecord] ) {
                                 Write-Host $_.Exception.Message -ForegroundColor DarkGray
                             } elseif ( $_ -is [System.Management.Automation.WarningRecord] ) {
@@ -244,7 +244,7 @@ New-Module -Name "Laguardia.SDK.Search" {
                     If( $_ -is [System.Management.Automation.ErrorRecord] ) {
                         throw $_.Exception
                     }
-                    If( $Verbose ) {
+                    If( $Logging ) {
                         If ( $_ -is [System.Management.Automation.WarningRecord] ) {
                             Write-Host $_.Message -ForegroundColor Yellow
                         } else {
@@ -273,7 +273,7 @@ New-Module -Name "Laguardia.SDK.Search" {
                 ([bool]($cache.Shebangs -ne $shebangs_csv))
                 ([bool]($cache.Languages -ne $languages_csv))
             ) -contains $true ){
-                If( $Verbose ) {
+                If( $Logging ) {
                     Write-Host "Cache is old. Refiltering source files with:" `
                         -BackgroundColor Yellow `
                         -ForegroundColor Black `
@@ -329,7 +329,7 @@ New-Module -Name "Laguardia.SDK.Search" {
                 $cache.Filtered = $cache.Files | Where-Object {
                     $counter++
                     $percent = [math]::Round(($counter / $total) * 100, 2)
-                    If( $Verbose ){
+                    If( $Logging ){
                         Write-Progress -Activity "Filtering files" `
                             -Status "Processing file $counter of $total ($percent%)" `
                             -CurrentOperation "$($_.FullName)" `
@@ -371,7 +371,7 @@ New-Module -Name "Laguardia.SDK.Search" {
             }
         } else {
 
-            If( $Verbose ){
+            If( $Logging ){
                 Write-Host "Updating repository..." `
                     -BackgroundColor Green `
                     -ForegroundColor Black `
@@ -401,7 +401,7 @@ New-Module -Name "Laguardia.SDK.Search" {
                     If( $_ -is [System.Management.Automation.ErrorRecord] ) {
                         throw $_.Exception
                     }
-                    If( $Verbose ) {
+                    If( $Logging ) {
                         If ( $_ -is [System.Management.Automation.WarningRecord] ) {
                             Write-Host $_.Message -ForegroundColor Yellow
                         } else {
@@ -418,7 +418,7 @@ New-Module -Name "Laguardia.SDK.Search" {
                 If( $_ -is [System.Management.Automation.ErrorRecord] ) {
                     throw $_.Exception
                 }
-                If( $Verbose ) {
+                If( $Logging ) {
                     If ( $_ -is [System.Management.Automation.WarningRecord] ) {
                         Write-Host $_.Message -ForegroundColor Yellow
                     } else {
@@ -427,7 +427,7 @@ New-Module -Name "Laguardia.SDK.Search" {
                 }
             }
 
-            If( $Verbose ) {
+            If( $Logging ) {
                 Write-Host "Cache not set. Aggregating source files..." `
                     -BackgroundColor Yellow `
                     -ForegroundColor Black `
@@ -443,7 +443,7 @@ New-Module -Name "Laguardia.SDK.Search" {
 
             $cache.Summary = [ordered]@{}
 
-            If( $Verbose ) {
+            If( $Logging ) {
                 Write-Host "Files aggregated. Filtering source files with" `
                     -BackgroundColor Magenta `
                     -ForegroundColor Black `
@@ -499,7 +499,7 @@ New-Module -Name "Laguardia.SDK.Search" {
             $cache.Filtered = $cache.Files | Where-Object {
                 $counter++
                 $percent = [math]::Round(($counter / $total) * 100, 2)
-                If( $Verbose ){
+                If( $Logging ){
                     Write-Progress -Activity "Filtering files" `
                         -Status "Processing file $counter of $total ($percent%)" `
                         -CurrentOperation "$($_.FullName)" `
@@ -561,7 +561,7 @@ New-Module -Name "Laguardia.SDK.Search" {
         if ($files.Count -eq 0) {
             Write-Host "No files found with the specified extensions." -ForegroundColor Yellow
             return
-        } elseif ( $Verbose ) {
+        } elseif ( $Logging ) {
             Write-Host "Searching in $($files.Count) files with extensions: $($Extensions -join ', ')" `
                 -ForegroundColor Black `
                 -BackgroundColor DarkYellow `
@@ -597,7 +597,7 @@ New-Module -Name "Laguardia.SDK.Search" {
                     $output."$filename".Lines."$($_.Line)" = $_.Content
                 }
 
-                If( $Verbose ){
+                If( $Logging ){
                     Write-Host "$filename`:" -ForegroundColor Cyan
                     Write-Host " (Language: $($_.Language))" -ForegroundColor DarkGray
 
@@ -610,7 +610,7 @@ New-Module -Name "Laguardia.SDK.Search" {
             }
         }
 
-        If( $Verbose ) {
+        If( $Logging ) {
             $total_files = $output.Keys.Count
             $total_hits = ($output.Values | ForEach-Object { $_.Count }) -as [int[]] | Measure-Object -Sum | Select-Object -ExpandProperty Sum
 

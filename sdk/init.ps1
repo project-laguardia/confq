@@ -7,9 +7,12 @@ param(
             return $default
         }
     }), # Allows forked contributions
+    [switch] $GitIgnore,
     [switch] $Branch,
     [switch] $Push
 )
+
+$gitRoot = git rev-parse --show-toplevel
 
 If( "$Origin".Trim() -ne "" ){
     git remote set-url origin $Origin
@@ -18,6 +21,11 @@ If( (git remote) -contains "sdk" ) {
     git remote set-url sdk $SDK
 } Else {
     git remote add sdk $SDK
+}
+
+cp "$gitRoot/sdk/.commitlintrc.yml" "$gitRoot/.commitlintrc.yml" -Force
+If( $GitIgnore ) {
+    cp "$gitRoot/sdk/.gitignore" "$gitRoot/.gitignore" -Force
 }
 
 If( $Branch ) {

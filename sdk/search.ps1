@@ -1,9 +1,11 @@
 param(
+    [switch] $FunctionOnly,
     [string] $Researching = (& {
-        throw "Researching parameter is required. Please provide a valid repository URL."
+        If( -not $FunctionOnly ){
+            throw "Researching parameter is required. Please provide a valid repository URL."
+        }
     }),
     [string] $Origin = "https://github.com/project-laguardia/sdk",
-    [switch] $FunctionOnly,
     [string] $Repository = (& {
         If( -not $FunctionOnly ){
             throw "Repository parameter is required. Please provide a valid repository path."
@@ -23,7 +25,7 @@ param(
     $Shebangs = $null,
     $Languages = $null,
     $OmitLanguages = $null,
-    [switch] $Verbose,
+    [switch] $Logging,
     [switch] $Force
 )
 
@@ -31,7 +33,9 @@ $ErrorActionPreference = "Stop"
 
 New-Module -Name "Laguardia.SDK.Search" {
     param(
-        [string] $DefaultRepository
+        [string] $DefaultRepository,
+        [string] $DefaultResearching,
+        [string] $BaseURL
     )
 
     # These are files you are not certain you want to omit or include from the search, but don't want to review
@@ -170,17 +174,16 @@ New-Module -Name "Laguardia.SDK.Search" {
 
     function global:Find-InSource {
         param(
+            [parameter(Mandatory = $true)]
             [string] $Pattern,
-            [string] $Researching = (& {
-                throw "Researching parameter is required. Please provide a valid repository URL."
-            }),
+            [string] $Researching = $DefaultResearching,
             [string] $Repository = $DefaultRepository,
             [string[]] $Extensions = $null,
             [string[]] $Shebangs = $null,
             [string[]] $Filenames = $null,
             [string[]] $Languages = $null,
             [string[]] $OmitLanguages = $null,
-            [switch] $Verbose,
+            [switch] $Logging,
             [switch] $Force
         )
 
@@ -188,23 +191,24 @@ New-Module -Name "Laguardia.SDK.Search" {
 
         $enry = If( Test-Path $cache.Enry -ErrorAction SilentlyContinue ) {
             $cache.Enry
-        } Elseif ( (-not $Force) -and $IsWindows -and (Test-FileExecutable "./enry.exe" -ErrorAction SilentlyContinue)) {
-            "./enry.exe" | Resolve-Path
-        } Elseif ( (-not $Force) -and (Test-FileExecutable "./enry" -ErrorAction SilentlyContinue)) {
-            "./enry" | Resolve-Path
+        } Elseif ( (-not $Force) -and $IsWindows -and (Test-FileExecutable "./sdk/enry.exe" -ErrorAction SilentlyContinue)) {
+            "./sdk/enry.exe" | Resolve-Path
+        } Elseif ( (-not $Force) -and (Test-FileExecutable "./sdk/enry" -ErrorAction SilentlyContinue)) {
+            "./sdk/enry" | Resolve-Path
         } Else {
             $old_sugggestions = $global:DisableCommandSuggestions
             $global:DisableCommandSuggestions = $true
             Try {
                 (gcm enry -ErrorAction Stop).Path | Resolve-Path -ErrorAction Stop
             } Catch {
-                If( $Verbose ) {
+                If( $Logging ) {
                     Write-Host "Enry not found! Fetching and building enry..." `
                         -BackgroundColor Yellow `
                         -ForegroundColor Black `
                         -NoNewline; Write-Host # Prevent color spillover
                 }
                 $tmp = New-TemporaryFile | % { rm $_; ni $_ -ItemType Directory }
+                $_enry = @{ path = $null }
                 & {
                     pushd $tmp
 
@@ -221,7 +225,7 @@ New-Module -Name "Laguardia.SDK.Search" {
                         If( $LASTEXITCODE -ne 0 ){
                             throw "$_"
                         }
-                        If( $Verbose ) {
+                        If( $Logging ) {
                             If( $_ -is [System.Management.Automation.ErrorRecord] ) {
                                 Write-Host $_.Exception.Message -ForegroundColor DarkGray
                             } elseif ( $_ -is [System.Management.Automation.WarningRecord] ) {
@@ -233,16 +237,18 @@ New-Module -Name "Laguardia.SDK.Search" {
                     }
                     popd
                     If( $IsWindows ) {
-                        cp "$tmp/enry.exe" "./enry.exe"
+                        cp "$tmp/enry.exe" "./sdk/enry.exe"
+                        $_enry.path = "./sdk/enry.exe" | Resolve-Path
                     } else {
-                        cp "$tmp/enry" "./enry"
+                        cp "$tmp/enry" "./sdk/enry"
+                        $_enry.path = "./sdk/enry" | Resolve-Path
                     }
                     Remove-Item -Path $tmp -Recurse -Force
                 } 2>&1 | ForEach-Object {
                     If( $_ -is [System.Management.Automation.ErrorRecord] ) {
                         throw $_.Exception
                     }
-                    If( $Verbose ) {
+                    If( $Logging ) {
                         If ( $_ -is [System.Management.Automation.WarningRecord] ) {
                             Write-Host $_.Message -ForegroundColor Yellow
                         } else {
@@ -250,7 +256,7 @@ New-Module -Name "Laguardia.SDK.Search" {
                         }
                     }
                 }
-                "./enry" | Resolve-Path
+                $_enry.path
             }
             $global:DisableCommandSuggestions = $old_sugggestions
         }
@@ -271,7 +277,7 @@ New-Module -Name "Laguardia.SDK.Search" {
                 ([bool]($cache.Shebangs -ne $shebangs_csv))
                 ([bool]($cache.Languages -ne $languages_csv))
             ) -contains $true ){
-                If( $Verbose ) {
+                If( $Logging ) {
                     Write-Host "Cache is old. Refiltering source files with:" `
                         -BackgroundColor Yellow `
                         -ForegroundColor Black `
@@ -327,7 +333,7 @@ New-Module -Name "Laguardia.SDK.Search" {
                 $cache.Filtered = $cache.Files | Where-Object {
                     $counter++
                     $percent = [math]::Round(($counter / $total) * 100, 2)
-                    If( $Verbose ){
+                    If( $Logging ){
                         Write-Progress -Activity "Filtering files" `
                             -Status "Processing file $counter of $total ($percent%)" `
                             -CurrentOperation "$($_.FullName)" `
@@ -339,14 +345,14 @@ New-Module -Name "Laguardia.SDK.Search" {
                     $lang = Format-Lang -Lang $lang -Path $_.FullName
 
                     $hit = (& {
-                        If( $Languages.Count -and ($Languages -contains $lang) ){ return $true }
-                        If( $Extensions -contains $_.Extension ){ return $true }
-                        If( $Filenames.Count -and $Filenames -contains $_.Name ){ return $true }
+                        If( $Languages.Count -and (($Languages -contains $lang) -or ($lang -eq $Languages)) ){ return $true }
+                        If( $Extensions.Count -and (($Extensions -contains $_.Extension) -or ($_.Extension -eq $Extensions)) ){ return $true }
+                        If( $Filenames.Count -and (($Filenames -contains $_.Name) -or ($_.Name -eq $Filenames)) ){ return $true }
 
                         $file = $_.FullName
                         $shebang = Get-Content -Path $file -TotalCount 1 -ErrorAction SilentlyContinue
-                        $Shebangs | ForEach-Object {
-                            if ($shebang -like "$_*") {
+                        foreach( $compare_shebang in $Shebangs ){
+                            If( "$shebang".Trim() -like "$compare_shebang*" ){
                                 return $true
                             }
                         }
@@ -369,7 +375,7 @@ New-Module -Name "Laguardia.SDK.Search" {
             }
         } else {
 
-            If( $Verbose ){
+            If( $Logging ){
                 Write-Host "Updating repository..." `
                     -BackgroundColor Green `
                     -ForegroundColor Black `
@@ -399,7 +405,7 @@ New-Module -Name "Laguardia.SDK.Search" {
                     If( $_ -is [System.Management.Automation.ErrorRecord] ) {
                         throw $_.Exception
                     }
-                    If( $Verbose ) {
+                    If( $Logging ) {
                         If ( $_ -is [System.Management.Automation.WarningRecord] ) {
                             Write-Host $_.Message -ForegroundColor Yellow
                         } else {
@@ -416,7 +422,7 @@ New-Module -Name "Laguardia.SDK.Search" {
                 If( $_ -is [System.Management.Automation.ErrorRecord] ) {
                     throw $_.Exception
                 }
-                If( $Verbose ) {
+                If( $Logging ) {
                     If ( $_ -is [System.Management.Automation.WarningRecord] ) {
                         Write-Host $_.Message -ForegroundColor Yellow
                     } else {
@@ -425,7 +431,7 @@ New-Module -Name "Laguardia.SDK.Search" {
                 }
             }
 
-            If( $Verbose ) {
+            If( $Logging ) {
                 Write-Host "Cache not set. Aggregating source files..." `
                     -BackgroundColor Yellow `
                     -ForegroundColor Black `
@@ -441,7 +447,7 @@ New-Module -Name "Laguardia.SDK.Search" {
 
             $cache.Summary = [ordered]@{}
 
-            If( $Verbose ) {
+            If( $Logging ) {
                 Write-Host "Files aggregated. Filtering source files with" `
                     -BackgroundColor Magenta `
                     -ForegroundColor Black `
@@ -497,7 +503,7 @@ New-Module -Name "Laguardia.SDK.Search" {
             $cache.Filtered = $cache.Files | Where-Object {
                 $counter++
                 $percent = [math]::Round(($counter / $total) * 100, 2)
-                If( $Verbose ){
+                If( $Logging ){
                     Write-Progress -Activity "Filtering files" `
                         -Status "Processing file $counter of $total ($percent%)" `
                         -CurrentOperation "$($_.FullName)" `
@@ -525,14 +531,14 @@ New-Module -Name "Laguardia.SDK.Search" {
                 }
 
                 $hit = (& {
-                    If( $Languages.Count -and ($Languages -contains $lang) ){ return $true }
-                    If( $Extensions -contains $_.Extension ){ return $true }
-                    If( $Filenames.Count -and $Filenames -contains $_.Name ){ return $true }
+                    If( $Languages.Count -and (($Languages -contains $lang) -or ($lang -eq $Languages)) ){ return $true }
+                    If( $Extensions.Count -and (($Extensions -contains $_.Extension) -or ($_.Extension -eq $Extensions)) ){ return $true }
+                    If( $Filenames.Count -and (($Filenames -contains $_.Name) -or ($_.Name -eq $Filenames)) ){ return $true }
 
                     $file = $_.FullName
                     $shebang = Get-Content -Path $file -TotalCount 1 -ErrorAction SilentlyContinue
-                    $Shebangs | ForEach-Object {
-                        if ($shebang -like "$_*") {
+                    foreach( $compare_shebang in $Shebangs ){
+                        If( "$shebang".Trim() -like "$compare_shebang*" ){
                             return $true
                         }
                     }
@@ -557,16 +563,28 @@ New-Module -Name "Laguardia.SDK.Search" {
         $files = $cache.Filtered
 
         if ($files.Count -eq 0) {
-            Write-Host "No files found with the specified extensions." -ForegroundColor Yellow
+            Write-Host "No files found within the specified criteria." -ForegroundColor Yellow
             return
-        } elseif ( $Verbose ) {
-            Write-Host "Searching in $($files.Count) files with extensions: $($Extensions -join ', ')" `
+        } elseif ( $Logging ) {
+            Write-Host "Searching in $($files.Count) files using specified pattern '$Pattern'" `
                 -ForegroundColor Black `
                 -BackgroundColor DarkYellow `
                 -NoNewline; Write-Host # Prevent color spillover
         }
 
+
+        $total_files = $files.Count
+        $counter = 0
         $files | ForEach-Object {
+            $counter++
+            $percent = [math]::Round(($counter / $total_files) * 100, 2)
+            If( $Logging ){
+                Write-Progress -Activity "Searching files" `
+                    -Status "Processing file $counter of $total_files ($percent%)" `
+                    -CurrentOperation "$($_.FullName)" `
+                    -PercentComplete $percent
+            }
+
             $filename = Try {
                 readlink -f $_.FullName
             } Catch {}
@@ -577,6 +595,13 @@ New-Module -Name "Laguardia.SDK.Search" {
             $fileContent = Get-Content $_.FullName
 
             $hits = for ($ln = 0; $ln -lt $fileContent.Count; $ln++) {
+                $percent = [math]::Round((($ln + 1) / $fileContent.Count) * 100, 2)
+                If( $Logging ){
+                    Write-Progress -Activity "Searching lines in '$filename'" `
+                        -Status "Processing line $($ln + 1) of $($fileContent.Count) ($percent%)" `
+                        -CurrentOperation "$filename" `
+                        -PercentComplete $percent
+                }
                 $line = $fileContent | Select-Object -Index $ln
                 if ($line -match $pattern) {
                     @{
@@ -595,7 +620,7 @@ New-Module -Name "Laguardia.SDK.Search" {
                     $output."$filename".Lines."$($_.Line)" = $_.Content
                 }
 
-                If( $Verbose ){
+                If( $Logging ){
                     Write-Host "$filename`:" -ForegroundColor Cyan
                     Write-Host " (Language: $($_.Language))" -ForegroundColor DarkGray
 
@@ -608,14 +633,14 @@ New-Module -Name "Laguardia.SDK.Search" {
             }
         }
 
-        If( $Verbose ) {
+        If( $Logging ) {
             $total_files = $output.Keys.Count
             $total_hits = ($output.Values | ForEach-Object { $_.Count }) -as [int[]] | Measure-Object -Sum | Select-Object -ExpandProperty Sum
 
             Write-Host "Found $total_hits hits in $total_files files." -ForegroundColor Green
             
             $langs = $cache.Summary.Keys | ForEach-Object { $_ } | Where-Object {
-                If( $OmitLanguages -and ($OmitLanguages -contains $_) ){ return $false }
+                If( $OmitLanguages -and (($OmitLanguages -contains $_) -or ($_ -eq $OmitLanguages)) ){ return $false }
                 return $true
             }
 
@@ -640,8 +665,69 @@ New-Module -Name "Laguardia.SDK.Search" {
         return $output
     }
 
-    Export-ModuleMember -Function Find-InSource
-} -ArgumentList $Repository | Import-Module | Out-Null
+    function Remove-LiteralPrefix {
+        param (
+            [string]$String,
+            [string]$Prefix
+        )
+
+        if ($String.StartsWith($Prefix)) {
+            return $String.Substring($Prefix.Length)
+        } else {
+            return $String
+        }
+    }
+
+    function global:Write-SearchResults {
+        param(
+            [parameter(Mandatory = $true)]
+            [string] $Pattern,
+            [string] $Output = (& {
+                $default = "tracking"
+                New-Item -Path $default -ItemType Directory -Force | Out-Null
+                $default
+            }),
+            [string] $Researching = $DefaultResearching,
+            [string] $Repository = $DefaultRepository,
+            [string[]] $Extensions = $null,
+            [string[]] $Shebangs = $null,
+            [string[]] $Filenames = $null,
+            [string[]] $Languages = $null,
+            [string[]] $OmitLanguages = $null,
+            [switch] $Logging,
+            [switch] $Force
+        )
+
+        $params = @{
+            Pattern = $Pattern
+            Researching = $Researching
+            Repository = $Repository
+            Extensions = $Extensions
+            Shebangs = $Shebangs
+            Filenames = $Filenames
+            Languages = $Languages
+            OmitLanguages = $OmitLanguages
+        }
+
+        If( $Logging ) {
+            $params.Logging = $true
+            Write-Host "Searching for '$Pattern' in the source code..." -ForegroundColor Magenta
+        }
+        If( $Force ){
+            $params.Force = $true
+        }
+        $hits = Find-InSource @params
+        $hits | ConvertTo-Json -Depth 5 | Out-File "$Output/results.json" -Encoding UTF8
+        $hits.Keys | ForEach-Object {
+            $path = (Remove-LiteralPrefix -String $_ -Prefix $params.Repository.Trim("./\")).TrimStart('.\/')
+            $base_url = $BaseURL.TrimEnd('/')
+            $url = "$base_url/$path"
+            return "[$path]($url)"
+        } | Out-File "$Output/results.txt" -Encoding UTF8
+    }
+
+    Export-ModuleMember -Function Find-InSource, Write-SearchResults
+} -ArgumentList $Repository, $Researching, $BaseURL | Import-Module | Out-Null
 
 If( $FunctionOnly ) {
     return
@@ -676,24 +762,13 @@ While( "$($location.Origin)".Trim() -ne $Origin.Trim() ) {
 
 pushd $location.Path
 
-function Remove-LiteralPrefix {
-    param (
-        [string]$String,
-        [string]$Prefix
-    )
-
-    if ($String.StartsWith($Prefix)) {
-        return $String.Substring($Prefix.Length)
-    } else {
-        return $String
-    }
-}
-
 & { # Example
     $params = @{
         Pattern = (& {
-            # Put a regex pattern here to search for
+            # This is a regex pattern to search for
+            throw "Pattern parameter is required. Please provide a valid search pattern."
         })
+        Output = $Output
         Researching = $Researching
         Repository = $Repository
         Extensions = $Extensions
@@ -702,20 +777,8 @@ function Remove-LiteralPrefix {
         Languages = $Languages
         OmitLanguages = $OmitLanguages
     }
-    If( $Verbose ) {
-        $params.Verbose = $true
-        Write-Host "Searching for '<something>' in the source code..." -ForegroundColor Magenta
-    }
-    If( $Force ){
-        $params.Force = $true
-    }
-    $hits = Find-InSource @params
-    $hits | ConvertTo-Json -Depth 5 | Out-File "$Output/results.json" -Encoding UTF8
-    $hits.Keys | ForEach-Object {
-        $path = (Remove-LiteralPrefix -String $_ -Prefix $params.Repository.Trim("./\")).TrimStart('.\/')
-        $base_url = $BaseURL.TrimEnd('/')
-        $url = "$base_url/$path"
-        return "[$path]($url)"
-    } | Out-File "$Output/results.txt" -Encoding UTF8
+    If( $Logging ) { $params.Logging = $true }
+    If( $Force ) { $params.Force = $true }
+    Write-SearchResults @params
 }
 popd

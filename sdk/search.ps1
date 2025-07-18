@@ -190,10 +190,10 @@ New-Module -Name "Laguardia.SDK.Search" {
 
         $enry = If( Test-Path $cache.Enry -ErrorAction SilentlyContinue ) {
             $cache.Enry
-        } Elseif ( (-not $Force) -and $IsWindows -and (Test-FileExecutable "./enry.exe" -ErrorAction SilentlyContinue)) {
-            "./enry.exe" | Resolve-Path
-        } Elseif ( (-not $Force) -and (Test-FileExecutable "./enry" -ErrorAction SilentlyContinue)) {
-            "./enry" | Resolve-Path
+        } Elseif ( (-not $Force) -and $IsWindows -and (Test-FileExecutable "./sdk/enry.exe" -ErrorAction SilentlyContinue)) {
+            "./sdk/enry.exe" | Resolve-Path
+        } Elseif ( (-not $Force) -and (Test-FileExecutable "./sdk/enry" -ErrorAction SilentlyContinue)) {
+            "./sdk/enry" | Resolve-Path
         } Else {
             $old_sugggestions = $global:DisableCommandSuggestions
             $global:DisableCommandSuggestions = $true
@@ -207,6 +207,7 @@ New-Module -Name "Laguardia.SDK.Search" {
                         -NoNewline; Write-Host # Prevent color spillover
                 }
                 $tmp = New-TemporaryFile | % { rm $_; ni $_ -ItemType Directory }
+                $_enry = @{ path = $null }
                 & {
                     pushd $tmp
 
@@ -235,9 +236,11 @@ New-Module -Name "Laguardia.SDK.Search" {
                     }
                     popd
                     If( $IsWindows ) {
-                        cp "$tmp/enry.exe" "./enry.exe"
+                        cp "$tmp/enry.exe" "./sdk/enry.exe"
+                        $_enry.path = "./sdk/enry.exe" | Resolve-Path
                     } else {
-                        cp "$tmp/enry" "./enry"
+                        cp "$tmp/enry" "./sdk/enry"
+                        $_enry.path = "./sdk/enry" | Resolve-Path
                     }
                     Remove-Item -Path $tmp -Recurse -Force
                 } 2>&1 | ForEach-Object {
@@ -252,7 +255,7 @@ New-Module -Name "Laguardia.SDK.Search" {
                         }
                     }
                 }
-                "./enry" | Resolve-Path
+                $_enry.path
             }
             $global:DisableCommandSuggestions = $old_sugggestions
         }

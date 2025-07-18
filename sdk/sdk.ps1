@@ -1,5 +1,6 @@
 param(
-    [switch] $Publish
+    [switch] $Publish,
+    [switch] $Origin
 )
 
 $module = Get-Module -Name "Laguardia.SDK.Stash"
@@ -54,6 +55,9 @@ If( $Publish ) {
             }
             git stash drop $name
         }
+    }
+    If( $Origin ) {
+        git push origin main
     }
     return
 }

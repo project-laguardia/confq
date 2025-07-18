@@ -13,6 +13,16 @@ param(
         $sha = (git ls-remote $Researching "HEAD").Split("`t") | Select-Object -First 1
         return "$Researching/tree/$sha"
     }),
+    [string] $Output = (& {
+        $default = "tracking"
+        New-Item -Path -Path $default -ItemType Directory -Force | Out-Null
+        $default
+    }),
+    $Extensions = $null,
+    $Filenames = $null,
+    $Shebangs = $null,
+    $Languages = $null,
+    $OmitLanguages = $null,
     [switch] $Verbose,
     [switch] $Force
 )
@@ -165,32 +175,11 @@ New-Module -Name "Laguardia.SDK.Search" {
                 throw "Researching parameter is required. Please provide a valid repository URL."
             }),
             [string] $Repository = $DefaultRepository,
-            [string[]] $Extensions = @(
-                ".lua",
-                ".c",
-                ".js",
-                ".mjs",
-                ".uc"
-            ),
-            [string[]] $Shebangs = @(
-                "#!/usr/bin/env ucode"
-            ),
+            [string[]] $Extensions = $null,
+            [string[]] $Shebangs = $null,
             [string[]] $Filenames = $null,
-            [string[]] $Languages = @(
-                "lua",
-                "c",
-                "javascript"
-            ),
-            [string[]] $OmitLanguages = @(
-                "Gettext Catalog"
-                "Text"
-                "Markdown"
-                "HTML",
-                "CSS",
-                "Image",
-                "Certificate",
-                "Font"
-            ),
+            [string[]] $Languages = $null,
+            [string[]] $OmitLanguages = $null,
             [switch] $Verbose,
             [switch] $Force
         )
@@ -712,8 +701,11 @@ function Remove-LiteralPrefix {
         })
         Researching = $Researching
         Repository = $Repository
-        Extensions = @()
-        Shebangs = @()
+        Extensions = $Extensions
+        Shebangs = $Shebangs
+        Filenames = $Filenames
+        Languages = $Languages
+        OmitLanguages = $OmitLanguages
     }
     If( $Verbose ) {
         $params.Verbose = $true
@@ -723,12 +715,12 @@ function Remove-LiteralPrefix {
         $params.Force = $true
     }
     $hits = Find-InSource @params
-    $hits | ConvertTo-Json -Depth 5 | Out-File "some/place/and/some/file.json" -Encoding UTF8
+    $hits | ConvertTo-Json -Depth 5 | Out-File "$Output/results.json" -Encoding UTF8
     $hits.Keys | ForEach-Object {
         $path = (Remove-LiteralPrefix -String $_ -Prefix $params.Repository.Trim("./\")).TrimStart('.\/')
         $base_url = $BaseURL.TrimEnd('/')
         $url = "$base_url/$path"
         return "[$path]($url)"
-    } | Out-File "some/place/and/some/file.txt" -Encoding UTF8
+    } | Out-File "$Output/results.txt" -Encoding UTF8
 }
 popd

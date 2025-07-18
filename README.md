@@ -1,3 +1,3 @@
-# The Laguardia SDK
+# confq
 
-A set of common tools used by the Laguardia project to manage and interact with repositories.
+A state configuration manager based on OpenWRT's UCI and Dasel.

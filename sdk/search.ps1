@@ -3,14 +3,26 @@ param(
         throw "Researching parameter is required. Please provide a valid repository URL."
     }),
     [string] $Origin = "https://github.com/project-laguardia/sdk",
+    [switch] $FunctionOnly,
     [string] $Repository = (& {
-        throw "Repository parameter is required. Please provide a valid repository path."
+        If( -not $FunctionOnly ){
+            throw "Repository parameter is required. Please provide a valid repository path."
+        }
     }),
     [string] $BaseURL = (& {
         $sha = (git ls-remote $Researching "HEAD").Split("`t") | Select-Object -First 1
         return "$Researching/tree/$sha"
     }),
-    [switch] $FunctionOnly,
+    [string] $Output = (& {
+        $default = "tracking"
+        New-Item -Path -Path $default -ItemType Directory -Force | Out-Null
+        $default
+    }),
+    $Extensions = $null,
+    $Filenames = $null,
+    $Shebangs = $null,
+    $Languages = $null,
+    $OmitLanguages = $null,
     [switch] $Verbose,
     [switch] $Force
 )
@@ -18,6 +30,10 @@ param(
 $ErrorActionPreference = "Stop"
 
 New-Module -Name "Laguardia.SDK.Search" {
+    param(
+        [string] $DefaultRepository
+    )
+
     # These are files you are not certain you want to omit or include from the search, but don't want to review
     # $global:DEBUGGING_LANGUAGE = "Menuconfig Makefile JSON XML Shell Perl C# Java Lex Yacc Diff INI CMake Python"
     $_DEBUGGING_LANGUAGE = If( -not ([string]::IsNullOrWhitespace( $global:DEBUGGING_LANGUAGE )) ){
@@ -158,35 +174,12 @@ New-Module -Name "Laguardia.SDK.Search" {
             [string] $Researching = (& {
                 throw "Researching parameter is required. Please provide a valid repository URL."
             }),
-            [string] $Repository = (& {
-                throw "Repository parameter is required. Please provide a valid repository path."
-            }),
-            [string[]] $Extensions = @(
-                ".lua",
-                ".c",
-                ".js",
-                ".mjs",
-                ".uc"
-            ),
-            [string[]] $Shebangs = @(
-                "#!/usr/bin/env ucode"
-            ),
+            [string] $Repository = $DefaultRepository,
+            [string[]] $Extensions = $null,
+            [string[]] $Shebangs = $null,
             [string[]] $Filenames = $null,
-            [string[]] $Languages = @(
-                "lua",
-                "c",
-                "javascript"
-            ),
-            [string[]] $OmitLanguages = @(
-                "Gettext Catalog"
-                "Text"
-                "Markdown"
-                "HTML",
-                "CSS",
-                "Image",
-                "Certificate",
-                "Font"
-            ),
+            [string[]] $Languages = $null,
+            [string[]] $OmitLanguages = $null,
             [switch] $Verbose,
             [switch] $Force
         )
@@ -389,7 +382,7 @@ New-Module -Name "Laguardia.SDK.Search" {
             } | Select-Object -First 1) -v | Out-Null
 
             $remotes = @{}
-            git remote -v 2>$null | ForEach-Object {
+            git -C $repository remote -v 2>$null | ForEach-Object {
                 if ($_ -match '^(\S+)\s+(\S+)') {
                     $remotes[$matches[1]] = $matches[2]
                 }
@@ -399,7 +392,7 @@ New-Module -Name "Laguardia.SDK.Search" {
             }
             If( "$remote".Trim() -eq "" ){
                 $remote = "researching"
-                git remote set-url $remote $Researching 2>&1 | ForEach-Object {
+                git -C $repository remote set-url $remote $Researching 2>&1 | ForEach-Object {
                     If( $LASTEXITCODE -ne 0 ){
                         throw "$_"
                     }
@@ -523,12 +516,7 @@ New-Module -Name "Laguardia.SDK.Search" {
                         $OmitLanguages
                         $Languages
                         $_DEBUGGING_LANGUAGE
-                    }) -icontains "$lang".Trim())) -and (-not (@(
-                        "luci/applications"
-                        "htdocs"
-                    ) | Where-Object {
-                        $path -like "*$_*"
-                    }).count) -or ("$lang").Trim() -eq "") {
+                    }) -icontains "$lang".Trim())) -or ("$lang").Trim() -eq "") {
                         Write-Host "$lang`:" $_.FullName -ForegroundColor Yellow
                         pause
                     } else {
@@ -653,7 +641,7 @@ New-Module -Name "Laguardia.SDK.Search" {
     }
 
     Export-ModuleMember -Function Find-InSource
-} | Import-Module | Out-Null
+} -ArgumentList $Repository | Import-Module | Out-Null
 
 If( $FunctionOnly ) {
     return
@@ -701,169 +689,33 @@ function Remove-LiteralPrefix {
     }
 }
 
-& { # Search for `uci` in the source code
+& { # Example
     $params = @{
-        Pattern = '(?<!l)uci'
+        Pattern = (& {
+            # Put a regex pattern here to search for
+        })
         Researching = $Researching
         Repository = $Repository
-        Extensions = @(
-            ".lua",
-            ".c",
-            ".js",
-            ".mjs",
-            ".uc"
-        )
-        Shebangs = @(
-            "#!/usr/bin/env ucode"
-        )
+        Extensions = $Extensions
+        Shebangs = $Shebangs
+        Filenames = $Filenames
+        Languages = $Languages
+        OmitLanguages = $OmitLanguages
     }
     If( $Verbose ) {
         $params.Verbose = $true
-        Write-Host "Searching for 'uci' in the source code..." -ForegroundColor Magenta
+        Write-Host "Searching for '<something>' in the source code..." -ForegroundColor Magenta
     }
     If( $Force ){
         $params.Force = $true
     }
     $hits = Find-InSource @params
-    $hits | ConvertTo-Json -Depth 5 | Out-File "porting/searches/uci/hits.json" -Encoding UTF8
+    $hits | ConvertTo-Json -Depth 5 | Out-File "$Output/results.json" -Encoding UTF8
     $hits.Keys | ForEach-Object {
         $path = (Remove-LiteralPrefix -String $_ -Prefix $params.Repository.Trim("./\")).TrimStart('.\/')
         $base_url = $BaseURL.TrimEnd('/')
         $url = "$base_url/$path"
         return "[$path]($url)"
-    } | Out-File "porting/searches/uci/hits.txt" -Encoding UTF8
+    } | Out-File "$Output/results.txt" -Encoding UTF8
 }
-
-& { # Search for `etc/config` in the source code
-    $params = @{
-        Pattern = 'etc\/config'
-        Researching = $Researching
-        Repository = $Repository
-        Extensions = @(
-            ".lua",
-            ".c",
-            ".js",
-            ".mjs",
-            ".uc"
-        )
-        Shebangs = @(
-            "#!/usr/bin/env ucode"
-        )
-    }
-    If( $Verbose ) {
-        $params.Verbose = $true
-        Write-Host "Searching for 'etc/config' in the source code..." -ForegroundColor Magenta
-    }
-    If( $Force ){
-        $params.Force = $true
-    }
-    $hits = Find-InSource @params
-    $hits | ConvertTo-Json -Depth 5 | Out-File "porting/searches/config/etc.hits.json" -Encoding UTF8
-    $hits.Keys | ForEach-Object {
-        $path = (Remove-LiteralPrefix -String $_ -Prefix $params.Repository.Trim("./\")).TrimStart('.\/')
-        $base_url = $BaseURL.TrimEnd('/')
-        $url = "$base_url/$path"
-        return "[$path]($url)"
-    } | Out-File "porting/searches/config/etc.hits.txt" -Encoding UTF8
-}
-
-& { # Search for `luci.config` in the source code
-    $params = @{
-        Pattern = 'luci\.config'
-        Researching = $Researching
-        Repository = $Repository
-        Extensions = @(
-            ".lua",
-            ".c",
-            ".js",
-            ".mjs",
-            ".uc"
-        )
-        Shebangs = @(
-            "#!/usr/bin/env ucode"
-        )
-    }
-    If( $Verbose ) {
-        $params.Verbose = $true
-        Write-Host "Searching for 'luci.config' in the source code..." -ForegroundColor Magenta
-    }
-    If( $Force ){
-        $params.Force = $true
-    }
-    $hits = Find-InSource @params
-    $hits | ConvertTo-Json -Depth 5 | Out-File "porting/searches/config/module.hits.json" -Encoding UTF8
-    $hits.Keys | ForEach-Object {
-        $path = (Remove-LiteralPrefix -String $_ -Prefix $params.Repository.Trim("./\")).TrimStart('.\/')
-        $base_url = $BaseURL.TrimEnd('/')
-        $url = "$base_url/$path"
-        return "[$path]($url)"
-    } | Out-File "porting/searches/config/module.hits.txt" -Encoding UTF8
-}
-
-& { # Search for `rpc` in the source code
-    $params = @{
-        Pattern = 'rpc'
-        Researching = $Researching
-        Repository = $Repository
-        Extensions = @(
-            ".lua",
-            ".c",
-            ".js",
-            ".mjs",
-            ".uc"
-        )
-        Shebangs = @(
-            "#!/usr/bin/env ucode"
-        )
-    }
-    If( $Verbose ) {
-        $params.Verbose = $true
-        Write-Host "Searching for 'rpc' in the source code..." -ForegroundColor Magenta
-    }
-    If( $Force ){
-        $params.Force = $true
-    }
-    $hits = Find-InSource @params
-    $hits | ConvertTo-Json -Depth 5 | Out-File "porting/searches/rpc/rpc.hits.json" -Encoding UTF8
-    $hits.Keys | ForEach-Object {
-        $path = (Remove-LiteralPrefix -String $_ -Prefix $params.Repository.Trim("./\")).TrimStart('.\/')
-        $base_url = $BaseURL.TrimEnd('/')
-        $url = "$base_url/$path"
-        return "[$path]($url)"
-    } | Out-File "porting/searches/rpc/rpc.hits.txt" -Encoding UTF8
-}
-
-& { # Search for `bus` in the source code
-    $params = @{
-        Pattern = 'bus(?![yi])'
-        Researching = $Researching
-        Repository = $Repository
-        Extensions = @(
-            ".lua",
-            ".c",
-            ".js",
-            ".mjs",
-            ".uc"
-        )
-        Shebangs = @(
-            "#!/usr/bin/env ucode"
-        )
-    }
-    If( $Verbose ) {
-        $params.Verbose = $true
-        Write-Host "Searching for 'bus' in the source code..." -ForegroundColor Magenta
-    }
-    If( $Force ){
-        $params.Force = $true
-    }
-    $hits = Find-InSource @params
-    $hits | ConvertTo-Json -Depth 5 | Out-File "porting/searches/rpc/bus.hits.json" -Encoding UTF8
-    $hits.Keys | ForEach-Object {
-        $path = (Remove-LiteralPrefix -String $_ -Prefix $params.Repository.Trim("./\")).TrimStart('.\/')
-        $base_url = $BaseURL.TrimEnd('/')
-        $url = "$base_url/$path"
-        return "[$path]($url)"
-    } | Out-File "porting/searches/rpc/bus.hits.txt" -Encoding UTF8
-}
-
 popd

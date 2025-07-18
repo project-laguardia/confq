@@ -70,8 +70,9 @@ If( $stash ) {
     & $module $sb
 
     git stash store $stash
+    git reset --hard
     git checkout -b sdk-changes sdk/main
-    git reset --hard sdk/main
+    git reset --hard
     git checkout $stash -- sdk/
     git add sdk/
     Write-Host "Changes stashed and SDK branch staged."

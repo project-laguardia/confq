@@ -563,16 +563,28 @@ New-Module -Name "Laguardia.SDK.Search" {
         $files = $cache.Filtered
 
         if ($files.Count -eq 0) {
-            Write-Host "No files found with the specified extensions." -ForegroundColor Yellow
+            Write-Host "No files found within the specified criteria." -ForegroundColor Yellow
             return
         } elseif ( $Logging ) {
-            Write-Host "Searching in $($files.Count) files with extensions: $($Extensions -join ', ')" `
+            Write-Host "Searching in $($files.Count) files using specified pattern '$Pattern'" `
                 -ForegroundColor Black `
                 -BackgroundColor DarkYellow `
                 -NoNewline; Write-Host # Prevent color spillover
         }
 
+
+        $total_files = $files.Count
+        $counter = 0
         $files | ForEach-Object {
+            $counter++
+            $percent = [math]::Round(($counter / $total_files) * 100, 2)
+            If( $Logging ){
+                Write-Progress -Activity "Searching files" `
+                    -Status "Processing file $counter of $total_files ($percent%)" `
+                    -CurrentOperation "$($_.FullName)" `
+                    -PercentComplete $percent
+            }
+
             $filename = Try {
                 readlink -f $_.FullName
             } Catch {}
@@ -583,6 +595,13 @@ New-Module -Name "Laguardia.SDK.Search" {
             $fileContent = Get-Content $_.FullName
 
             $hits = for ($ln = 0; $ln -lt $fileContent.Count; $ln++) {
+                $percent = [math]::Round((($ln + 1) / $fileContent.Count) * 100, 2)
+                If( $Logging ){
+                    Write-Progress -Activity "Searching lines in '$filename'" `
+                        -Status "Processing line $($ln + 1) of $($fileContent.Count) ($percent%)" `
+                        -CurrentOperation "$filename" `
+                        -PercentComplete $percent
+                }
                 $line = $fileContent | Select-Object -Index $ln
                 if ($line -match $pattern) {
                     @{

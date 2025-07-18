@@ -15,7 +15,7 @@ param(
     }),
     [string] $Output = (& {
         $default = "tracking"
-        New-Item --Path $default -ItemType Directory -Force | Out-Null
+        New-Item -Path $default -ItemType Directory -Force | Out-Null
         $default
     }),
     $Extensions = $null,

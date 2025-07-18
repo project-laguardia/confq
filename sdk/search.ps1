@@ -516,12 +516,7 @@ New-Module -Name "Laguardia.SDK.Search" {
                         $OmitLanguages
                         $Languages
                         $_DEBUGGING_LANGUAGE
-                    }) -icontains "$lang".Trim())) -and (-not (@(
-                        "luci/applications"
-                        "htdocs"
-                    ) | Where-Object {
-                        $path -like "*$_*"
-                    }).count) -or ("$lang").Trim() -eq "") {
+                    }) -icontains "$lang".Trim())) -or ("$lang").Trim() -eq "") {
                         Write-Host "$lang`:" $_.FullName -ForegroundColor Yellow
                         pause
                     } else {

@@ -39,6 +39,13 @@ If( $Publish ) {
     git checkout $branch
 
     git merge sdk-changes --no-ff -m "Merge SDK changes from sdk-changes branch"
+    If( $LASTEXITCODE -ne 0 ) {
+        Try {
+            Write-Warning "Merge failed. Please resolve conflicts and try again.`r`n`r`n  You can:`r`n  - pause here while using your IDE or...`r`n  - use option 'S' to TEMPORARILY return to command line,`r`n    then run the 'exit' command to return to the script" -WarningAction Inquire
+        } Catch {
+            throw "Merge failed. Please resolve conflicts then run -Publish again."
+        }
+    }
 
     git branch -D sdk-changes
 

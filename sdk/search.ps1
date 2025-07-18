@@ -33,7 +33,9 @@ $ErrorActionPreference = "Stop"
 
 New-Module -Name "Laguardia.SDK.Search" {
     param(
-        [string] $DefaultRepository
+        [string] $DefaultRepository,
+        [string] $DefaultResearching,
+        [string] $BaseURL
     )
 
     # These are files you are not certain you want to omit or include from the search, but don't want to review
@@ -173,9 +175,7 @@ New-Module -Name "Laguardia.SDK.Search" {
     function global:Find-InSource {
         param(
             [string] $Pattern,
-            [string] $Researching = (& {
-                throw "Researching parameter is required. Please provide a valid repository URL."
-            }),
+            [string] $Researching = $DefaultResearching,
             [string] $Repository = $DefaultRepository,
             [string[]] $Extensions = $null,
             [string[]] $Shebangs = $null,
@@ -642,8 +642,7 @@ New-Module -Name "Laguardia.SDK.Search" {
         return $output
     }
 
-    Export-ModuleMember -Function Find-InSource
-} -ArgumentList $Repository | Import-Module | Out-Null
+} -ArgumentList $Repository, $Researching, $BaseURL | Import-Module | Out-Null
 
 If( $FunctionOnly ) {
     return

@@ -43,6 +43,9 @@ If( $Publish ) {
 
     If( $sha ) {
         git stash apply $sha
+        If( $LASTEXITCODE -eq 0 ) {
+            git stash drop $sha
+        }
     }
     return
 }

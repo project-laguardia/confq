@@ -44,7 +44,15 @@ If( $Publish ) {
     If( $sha ) {
         git stash apply $sha
         If( $LASTEXITCODE -eq 0 ) {
-            git stash drop $sha
+            $name = $null
+            foreach( $log in (git reflog show refs/stash --format="%H %gD") ){
+                $segments = $log -split ' '
+                If( ($segments | Select-Object -Index 0) -eq $sha ) {
+                    $name = $segments | Select-Object -Index 1
+                    break
+                }
+            }
+            git stash drop $name
         }
     }
     return

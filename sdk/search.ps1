@@ -1,9 +1,11 @@
 param(
+    [switch] $FunctionOnly,
     [string] $Researching = (& {
+        If( -not $FunctionOnly ){
         throw "Researching parameter is required. Please provide a valid repository URL."
+        }
     }),
     [string] $Origin = "https://github.com/project-laguardia/sdk",
-    [switch] $FunctionOnly,
     [string] $Repository = (& {
         If( -not $FunctionOnly ){
             throw "Repository parameter is required. Please provide a valid repository path."

@@ -6,7 +6,7 @@ param(
     [switch] $FunctionOnly,
     [string] $Repository = (& {
         If( -not $FunctionOnly ){
-        throw "Repository parameter is required. Please provide a valid repository path."
+            throw "Repository parameter is required. Please provide a valid repository path."
         }
     }),
     [string] $BaseURL = (& {
@@ -705,169 +705,30 @@ function Remove-LiteralPrefix {
     }
 }
 
-& { # Search for `uci` in the source code
+& { # Example
     $params = @{
-        Pattern = '(?<!l)uci'
+        Pattern = (& {
+            # Put a regex pattern here to search for
+        })
         Researching = $Researching
         Repository = $Repository
-        Extensions = @(
-            ".lua",
-            ".c",
-            ".js",
-            ".mjs",
-            ".uc"
-        )
-        Shebangs = @(
-            "#!/usr/bin/env ucode"
-        )
+        Extensions = @()
+        Shebangs = @()
     }
     If( $Verbose ) {
         $params.Verbose = $true
-        Write-Host "Searching for 'uci' in the source code..." -ForegroundColor Magenta
+        Write-Host "Searching for '<something>' in the source code..." -ForegroundColor Magenta
     }
     If( $Force ){
         $params.Force = $true
     }
     $hits = Find-InSource @params
-    $hits | ConvertTo-Json -Depth 5 | Out-File "porting/searches/uci/hits.json" -Encoding UTF8
+    $hits | ConvertTo-Json -Depth 5 | Out-File "some/place/and/some/file.json" -Encoding UTF8
     $hits.Keys | ForEach-Object {
         $path = (Remove-LiteralPrefix -String $_ -Prefix $params.Repository.Trim("./\")).TrimStart('.\/')
         $base_url = $BaseURL.TrimEnd('/')
         $url = "$base_url/$path"
         return "[$path]($url)"
-    } | Out-File "porting/searches/uci/hits.txt" -Encoding UTF8
+    } | Out-File "some/place/and/some/file.txt" -Encoding UTF8
 }
-
-& { # Search for `etc/config` in the source code
-    $params = @{
-        Pattern = 'etc\/config'
-        Researching = $Researching
-        Repository = $Repository
-        Extensions = @(
-            ".lua",
-            ".c",
-            ".js",
-            ".mjs",
-            ".uc"
-        )
-        Shebangs = @(
-            "#!/usr/bin/env ucode"
-        )
-    }
-    If( $Verbose ) {
-        $params.Verbose = $true
-        Write-Host "Searching for 'etc/config' in the source code..." -ForegroundColor Magenta
-    }
-    If( $Force ){
-        $params.Force = $true
-    }
-    $hits = Find-InSource @params
-    $hits | ConvertTo-Json -Depth 5 | Out-File "porting/searches/config/etc.hits.json" -Encoding UTF8
-    $hits.Keys | ForEach-Object {
-        $path = (Remove-LiteralPrefix -String $_ -Prefix $params.Repository.Trim("./\")).TrimStart('.\/')
-        $base_url = $BaseURL.TrimEnd('/')
-        $url = "$base_url/$path"
-        return "[$path]($url)"
-    } | Out-File "porting/searches/config/etc.hits.txt" -Encoding UTF8
-}
-
-& { # Search for `luci.config` in the source code
-    $params = @{
-        Pattern = 'luci\.config'
-        Researching = $Researching
-        Repository = $Repository
-        Extensions = @(
-            ".lua",
-            ".c",
-            ".js",
-            ".mjs",
-            ".uc"
-        )
-        Shebangs = @(
-            "#!/usr/bin/env ucode"
-        )
-    }
-    If( $Verbose ) {
-        $params.Verbose = $true
-        Write-Host "Searching for 'luci.config' in the source code..." -ForegroundColor Magenta
-    }
-    If( $Force ){
-        $params.Force = $true
-    }
-    $hits = Find-InSource @params
-    $hits | ConvertTo-Json -Depth 5 | Out-File "porting/searches/config/module.hits.json" -Encoding UTF8
-    $hits.Keys | ForEach-Object {
-        $path = (Remove-LiteralPrefix -String $_ -Prefix $params.Repository.Trim("./\")).TrimStart('.\/')
-        $base_url = $BaseURL.TrimEnd('/')
-        $url = "$base_url/$path"
-        return "[$path]($url)"
-    } | Out-File "porting/searches/config/module.hits.txt" -Encoding UTF8
-}
-
-& { # Search for `rpc` in the source code
-    $params = @{
-        Pattern = 'rpc'
-        Researching = $Researching
-        Repository = $Repository
-        Extensions = @(
-            ".lua",
-            ".c",
-            ".js",
-            ".mjs",
-            ".uc"
-        )
-        Shebangs = @(
-            "#!/usr/bin/env ucode"
-        )
-    }
-    If( $Verbose ) {
-        $params.Verbose = $true
-        Write-Host "Searching for 'rpc' in the source code..." -ForegroundColor Magenta
-    }
-    If( $Force ){
-        $params.Force = $true
-    }
-    $hits = Find-InSource @params
-    $hits | ConvertTo-Json -Depth 5 | Out-File "porting/searches/rpc/rpc.hits.json" -Encoding UTF8
-    $hits.Keys | ForEach-Object {
-        $path = (Remove-LiteralPrefix -String $_ -Prefix $params.Repository.Trim("./\")).TrimStart('.\/')
-        $base_url = $BaseURL.TrimEnd('/')
-        $url = "$base_url/$path"
-        return "[$path]($url)"
-    } | Out-File "porting/searches/rpc/rpc.hits.txt" -Encoding UTF8
-}
-
-& { # Search for `bus` in the source code
-    $params = @{
-        Pattern = 'bus(?![yi])'
-        Researching = $Researching
-        Repository = $Repository
-        Extensions = @(
-            ".lua",
-            ".c",
-            ".js",
-            ".mjs",
-            ".uc"
-        )
-        Shebangs = @(
-            "#!/usr/bin/env ucode"
-        )
-    }
-    If( $Verbose ) {
-        $params.Verbose = $true
-        Write-Host "Searching for 'bus' in the source code..." -ForegroundColor Magenta
-    }
-    If( $Force ){
-        $params.Force = $true
-    }
-    $hits = Find-InSource @params
-    $hits | ConvertTo-Json -Depth 5 | Out-File "porting/searches/rpc/bus.hits.json" -Encoding UTF8
-    $hits.Keys | ForEach-Object {
-        $path = (Remove-LiteralPrefix -String $_ -Prefix $params.Repository.Trim("./\")).TrimStart('.\/')
-        $base_url = $BaseURL.TrimEnd('/')
-        $url = "$base_url/$path"
-        return "[$path]($url)"
-    } | Out-File "porting/searches/rpc/bus.hits.txt" -Encoding UTF8
-}
-
 popd

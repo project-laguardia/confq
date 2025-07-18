@@ -49,6 +49,11 @@ If( $Publish ) {
     return
 }
 
+If( git stash list ){
+    Write-Error "Changes found in stash. Apply them or clear them with 'git stash clear'."
+    return
+}
+
 $stash = git stash create
 If( $stash ) {
 

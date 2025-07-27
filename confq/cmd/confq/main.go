@@ -6,13 +6,13 @@ import (
 
 	"github.com/project-laguardia/confq/internal/cli"
 
-	_ "github.com/tomwright/dasel/parsing/csv"
-	_ "github.com/tomwright/dasel/parsing/d"
-	_ "github.com/tomwright/dasel/parsing/hcl"
-	_ "github.com/tomwright/dasel/parsing/json"
-	_ "github.com/tomwright/dasel/parsing/toml"
-	_ "github.com/tomwright/dasel/parsing/xml"
-	_ "github.com/tomwright/dasel/parsing/yaml"
+	_ "github.com/tomwright/dasel/v3/parsing/csv"
+	_ "github.com/tomwright/dasel/v3/parsing/d"
+	_ "github.com/tomwright/dasel/v3/parsing/hcl"
+	_ "github.com/tomwright/dasel/v3/parsing/json"
+	_ "github.com/tomwright/dasel/v3/parsing/toml"
+	_ "github.com/tomwright/dasel/v3/parsing/xml"
+	_ "github.com/tomwright/dasel/v3/parsing/yaml"
 )
 
 func main() {

@@ -38,4 +38,4 @@ require (
 	// golang.org/x/tools v0.6.0 // indirect
 )
 
-replace github.com/tomwright/dasel => github.com/project-laguardia/dasel v1.27.3
+replace github.com/tomwright/dasel/v3 => github.com/project-laguardia/dasel/v3 v3.0.0
